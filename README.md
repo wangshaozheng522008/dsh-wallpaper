@@ -36,14 +36,15 @@ Then add the loader entry to `~/.dsh/profiles/web/cordis.patch.yml`:
 
 ## How it works
 
-- **Host half** (`lib/index.js`): registers the `wallpaper` settings namespace (zod v4 schema via `@deepseek-ai/schemastery`) and three HTTP routes on the harness web server:
+- **Host half** (`lib/index.js`): registers the `wallpaper` settings namespace (schemastery schema, so the state lives in the host settings document at `~/.dsh/settings.yaml`) and HTTP routes on the harness web server:
   - `POST /api/dsh-wallpaper/upload` — raw image body, content-type selects the extension, stored as `$DSH_HOME/wallpaper/<uuid>.<ext>` (≤ 25 MB),
   - `GET /api/dsh-wallpaper/image/<id>` — serves the original,
-  - `DELETE /api/dsh-wallpaper/image/<id>` — removes it.
+  - `DELETE /api/dsh-wallpaper/image/<id>` — removes it,
+  - `GET/POST /api/dsh-wallpaper/state` — reads / replaces the persisted `{image, opacity, accent}` section. The web settings RPC only serves an explicit namespace allow-list, so the plugin owns its state surface; state changes still emit `settings/document-updated`, which the client receives through the `remote` service to stay in sync across tabs.
 - **Client half** (`lib/client.js`): a `__ModuleLoader__` factory bundle that
   - registers a `settings.general.item` slot row (order 20, right after Appearance),
   - computes the dominant color client-side (canvas downscale + weighted RGB histogram),
-  - bakes the image at the chosen opacity into a WebP/PNG data URL and paints it as `background-image` on the main app frame (located via the stable `[data-shell-overlay]` hook),
+  - bakes the image at the chosen opacity into a WebP/PNG data URL and paints it as `background-image` on the main app frame (located via the stable `[data-shell-overlay]` hook; the baked alpha lets the base color show through),
   - pushes a token override layer through the theme service (`theme.overrideTokens`) so `--dsw-alias-*` workspace tokens follow the accent in light and dark modes.
 
 ## Requirements
